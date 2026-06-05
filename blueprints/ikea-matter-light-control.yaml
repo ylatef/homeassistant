@@ -17,15 +17,21 @@
       - Double-press **button 2** to set brightness to 10%
       - Hold **button 2** to decrease brightness
   input:
-    matter_switch:
-      name: IKEA Bilresa Dual Button Switch
-      description: IKEA Bilresa Dual Button switch device to use
+    button1_event:
+      name: Button 1 Event Entity
+      description: Select the Button 1 event entity (e.g., event.bilresa_dual_button_button_1)
       selector:
-        device:
+        entity:
           filter:
-            - integration: matter
-              manufacturer: IKEA of Sweden
-              model: BILRESA dual button
+            - domain: event
+          multiple: false
+    button2_event:
+      name: Button 2 Event Entity
+      description: Select the Button 2 event entity (e.g., event.bilresa_dual_button_button_2)
+      selector:
+        entity:
+          filter:
+            - domain: event
           multiple: false
     target_light:
       name: Light
@@ -39,31 +45,32 @@
 mode: restart
 max_exceeded: silent
 
+triggers:
+  # Button 1 - All Events
+  - platform: state
+    entity_id: !input button1_event
+    id: button1-event
+  
+  # Button 2 - All Events
+  - platform: state
+    entity_id: !input button2_event
+    id: button2-event
+
 variables:
   target_light: !input target_light
-  matter_switch: !input matter_switch
+  button1_event: !input button1_event
+  button2_event: !input button2_event
   helper_hold_delay: 0.1
   helper_hold_dim_step: 4
-  button1_entity: "{{ device_entities(matter_switch) | select('search', 'button_1') | select('search', 'event') | list | first }}"
-  button2_entity: "{{ device_entities(matter_switch) | select('search', 'button_2') | select('search', 'event') | list | first }}"
-  triggered_entity: "{{ trigger.event.data.entity_id }}"
-  event_type: "{{ trigger.event.data.new_state.attributes.event_type if trigger.event.data.new_state else '' }}"
-
-triggers:
-  - platform: event
-    event_type: state_changed
-    event_data:
-      entity_id: "{{ device_entities(matter_switch) | select('search', 'button_1') | select('search', 'event') | list | first }}"
+  event_type: "{{ trigger.to_state.attributes.event_type if trigger.to_state and trigger.to_state.attributes else '' }}"
+  triggered_entity: "{{ trigger.entity_id }}"
 
 actions:
-  - variables:
-      event_type: "{{ trigger.event.data.new_state.attributes.event_type if trigger.event.data.new_state and trigger.event.data.new_state.attributes else '' }}"
-      triggered_entity: "{{ trigger.event.data.entity_id }}"
   - choose:
       # Button 1 Single Press - Toggle Light
       - conditions:
           - condition: template
-            value_template: "{{ triggered_entity == button1_entity and event_type == 'initial_press' }}"
+            value_template: "{{ triggered_entity == button1_event and event_type == 'initial_press' }}"
         sequence:
           - action: light.toggle
             target:
@@ -73,7 +80,7 @@ actions:
       # Button 2 Single Press - Toggle Light
       - conditions:
           - condition: template
-            value_template: "{{ triggered_entity == button2_entity and event_type == 'initial_press' }}"
+            value_template: "{{ triggered_entity == button2_event and event_type == 'initial_press' }}"
         sequence:
           - action: light.toggle
             target:
@@ -83,7 +90,7 @@ actions:
       # Button 1 Double Press - Set Brightness to 100%
       - conditions:
           - condition: template
-            value_template: "{{ triggered_entity == button1_entity and event_type == 'multi_press_2' }}"
+            value_template: "{{ triggered_entity == button1_event and event_type == 'multi_press_2' }}"
         sequence:
           - action: light.turn_on
             target:
@@ -94,7 +101,7 @@ actions:
       # Button 1 Hold - Continuously Increase Brightness
       - conditions:
           - condition: template
-            value_template: "{{ triggered_entity == button1_entity and event_type == 'long_press' }}"
+            value_template: "{{ triggered_entity == button1_event and event_type == 'long_press' }}"
         sequence:
           - repeat:
               while:
@@ -112,7 +119,7 @@ actions:
       # Button 2 Double Press - Set Brightness to 10%
       - conditions:
           - condition: template
-            value_template: "{{ triggered_entity == button2_entity and event_type == 'multi_press_2' }}"
+            value_template: "{{ triggered_entity == button2_event and event_type == 'multi_press_2' }}"
         sequence:
           - action: light.turn_on
             target:
@@ -123,7 +130,7 @@ actions:
       # Button 2 Hold - Continuously Decrease Brightness
       - conditions:
           - condition: template
-            value_template: "{{ triggered_entity == button2_entity and event_type == 'long_press' }}"
+            value_template: "{{ triggered_entity == button2_event and event_type == 'long_press' }}"
         sequence:
           - repeat:
               while:
