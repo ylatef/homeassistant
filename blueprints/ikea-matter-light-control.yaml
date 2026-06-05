@@ -47,14 +47,14 @@ trigger_variables:
 triggers:
   # Button 1 - All Events
   - platform: state
-    entity_id: !input matter_switch
+    entity_id: {{ button1_entity }}
     id: button1-event
     variables:
       trigger_entity: "{{ device_entities(matter_switch) | select('search', 'button_1') | list | first }}"
   
   # Button 2 - All Events
   - platform: state
-    entity_id: !input matter_switch
+    entity_id: {{ button2_entity }}
     id: button2-event
     variables:
       trigger_entity: "{{ device_entities(matter_switch) | select('search', 'button_2') | list | first }}"
