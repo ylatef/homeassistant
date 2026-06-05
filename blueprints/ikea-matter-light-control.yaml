@@ -39,37 +39,26 @@
 mode: restart
 max_exceeded: silent
 
-trigger_variables:
-  matter_switch: !input matter_switch
-  button1_entity: "{{ device_entities(matter_switch) | select('search', 'button_1') | list | first }}"
-  button2_entity: "{{ device_entities(matter_switch) | select('search', 'button_2') | list | first }}"
-
-triggers:
-  # Button 1 - All Events
-  - platform: state
-    entity_id: {{ button1_entity }}
-    id: button1-event
-    variables:
-      trigger_entity: "{{ device_entities(matter_switch) | select('search', 'button_1') | list | first }}"
-  
-  # Button 2 - All Events
-  - platform: state
-    entity_id: {{ button2_entity }}
-    id: button2-event
-    variables:
-      trigger_entity: "{{ device_entities(matter_switch) | select('search', 'button_2') | list | first }}"
-
 variables:
   target_light: !input target_light
   matter_switch: !input matter_switch
   helper_hold_delay: 0.1
   helper_hold_dim_step: 4
-  button1_entity: "{{ device_entities(matter_switch) | select('search', 'button_1') | list | first }}"
-  button2_entity: "{{ device_entities(matter_switch) | select('search', 'button_2') | list | first }}"
-  event_type: "{{ trigger.to_state.attributes.event_type if trigger.to_state else '' }}"
-  triggered_entity: "{{ trigger.entity_id }}"
+  button1_entity: "{{ device_entities(matter_switch) | select('search', 'button_1') | select('search', 'event') | list | first }}"
+  button2_entity: "{{ device_entities(matter_switch) | select('search', 'button_2') | select('search', 'event') | list | first }}"
+  triggered_entity: "{{ trigger.event.data.entity_id }}"
+  event_type: "{{ trigger.event.data.new_state.attributes.event_type if trigger.event.data.new_state else '' }}"
+
+triggers:
+  - platform: event
+    event_type: state_changed
+    event_data:
+      entity_id: "{{ device_entities(matter_switch) | select('search', 'button_1') | select('search', 'event') | list | first }}"
 
 actions:
+  - variables:
+      event_type: "{{ trigger.event.data.new_state.attributes.event_type if trigger.event.data.new_state and trigger.event.data.new_state.attributes else '' }}"
+      triggered_entity: "{{ trigger.event.data.entity_id }}"
   - choose:
       # Button 1 Single Press - Toggle Light
       - conditions:
