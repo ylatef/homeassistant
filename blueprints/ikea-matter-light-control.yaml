@@ -62,7 +62,7 @@ variables:
   button2_event: !input button2_event
   helper_hold_delay: 0.1
   helper_hold_dim_step: 4
-  event_type: "{{ trigger.to_state.state if trigger.to_state else '' }}"
+  event_type: "{{ trigger.to_state.attributes.event_type if trigger.to_state and trigger.to_state.attributes else '' }}"
   triggered_entity: "{{ trigger.entity_id }}"
 
 actions:
@@ -70,7 +70,7 @@ actions:
       # Button 1 Single Press - Toggle Light
       - conditions:
           - condition: template
-            value_template: "{{ triggered_entity == button1_event and event_type in ['initial_press', 'short_release'] }}"
+            value_template: "{{ triggered_entity == button1_event and event_type == 'multi_press_1' }}"
         sequence:
           - action: light.toggle
             target:
@@ -80,7 +80,7 @@ actions:
       # Button 2 Single Press - Toggle Light
       - conditions:
           - condition: template
-            value_template: "{{ triggered_entity == button2_event and event_type in ['initial_press', 'short_release'] }}"
+            value_template: "{{ triggered_entity == button2_event and event_type == 'multi_press_1' }}"
         sequence:
           - action: light.toggle
             target:
@@ -90,10 +90,8 @@ actions:
       # Button 1 Double Press - Set Brightness to 100%
       - conditions:
           - condition: template
-            value_template: "{{ triggered_entity == button1_event and event_type == 'multi_press_complete' }}"
+            value_template: "{{ triggered_entity == button1_event and event_type == 'multi_press_2' }}"
         sequence:
-          - condition: template
-            value_template: "{{ trigger.to_state.attributes.multi_press_count | int(0) == 2 }}"
           - action: light.turn_on
             target:
               entity_id: !input target_light
@@ -121,10 +119,8 @@ actions:
       # Button 2 Double Press - Set Brightness to 10%
       - conditions:
           - condition: template
-            value_template: "{{ triggered_entity == button2_event and event_type == 'multi_press_complete' }}"
+            value_template: "{{ triggered_entity == button2_event and event_type == 'multi_press_2' }}"
         sequence:
-          - condition: template
-            value_template: "{{ trigger.to_state.attributes.multi_press_count | int(0) == 2 }}"
           - action: light.turn_on
             target:
               entity_id: !input target_light
