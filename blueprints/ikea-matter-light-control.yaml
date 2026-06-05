@@ -41,71 +41,50 @@ max_exceeded: silent
 
 trigger_variables:
   matter_switch: !input matter_switch
+  button1_entity: "{{ device_entities(matter_switch) | select('search', 'button_1') | list | first }}"
+  button2_entity: "{{ device_entities(matter_switch) | select('search', 'button_2') | list | first }}"
 
 triggers:
-  # Button 1 - Single Press
-  - trigger: event
-    event_type: state_changed
-    event_data:
-      entity_id: event.bilresa_dual_button_button_1
-    id: button1-single
+  # Button 1 - All Events
+  - platform: state
+    entity_id: !input matter_switch
+    id: button1-event
+    variables:
+      trigger_entity: "{{ device_entities(matter_switch) | select('search', 'button_1') | list | first }}"
   
-  # Button 1 - Double Press
-  - trigger: event
-    event_type: state_changed
-    event_data:
-      entity_id: event.bilresa_dual_button_button_1
-      attribute_name: event_type
-      new_value: multi_press_2
-    id: button1-double
-  
-  # Button 1 - Long Press (Hold)
-  - trigger: event
-    event_type: state_changed
-    event_data:
-      entity_id: event.bilresa_dual_button_button_1
-      attribute_name: event_type
-      new_value: long_press
-    id: button1-hold
-  
-  # Button 2 - Single Press
-  - trigger: event
-    event_type: state_changed
-    event_data:
-      entity_id: event.bilresa_dual_button_button_2
-    id: button2-single
-  
-  # Button 2 - Double Press
-  - trigger: event
-    event_type: state_changed
-    event_data:
-      entity_id: event.bilresa_dual_button_button_2
-      attribute_name: event_type
-      new_value: multi_press_2
-    id: button2-double
-  
-  # Button 2 - Long Press (Hold)
-  - trigger: event
-    event_type: state_changed
-    event_data:
-      entity_id: event.bilresa_dual_button_button_2
-      attribute_name: event_type
-      new_value: long_press
-    id: button2-hold
+  # Button 2 - All Events
+  - platform: state
+    entity_id: !input matter_switch
+    id: button2-event
+    variables:
+      trigger_entity: "{{ device_entities(matter_switch) | select('search', 'button_2') | list | first }}"
 
 variables:
   target_light: !input target_light
+  matter_switch: !input matter_switch
   helper_hold_delay: 0.1
   helper_hold_dim_step: 4
+  button1_entity: "{{ device_entities(matter_switch) | select('search', 'button_1') | list | first }}"
+  button2_entity: "{{ device_entities(matter_switch) | select('search', 'button_2') | list | first }}"
+  event_type: "{{ trigger.to_state.attributes.event_type if trigger.to_state else '' }}"
+  triggered_entity: "{{ trigger.entity_id }}"
 
 actions:
   - choose:
-      # Button 1 & 2 Single Press - Toggle Light
+      # Button 1 Single Press - Toggle Light
       - conditions:
-          - condition: trigger
-            id:
-              - button1-single
-              - button2-single
+          - condition: template
+            value_template: "{{ triggered_entity == button1_entity and event_type == 'initial_press' }}"
+        sequence:
+          - action: light.toggle
+            target:
+              entity_id: !input target_light
+            data: {}
+      
+      # Button 2 Single Press - Toggle Light
+      - conditions:
+          - condition: template
+            value_template: "{{ triggered_entity == button2_entity and event_type == 'initial_press' }}"
         sequence:
           - action: light.toggle
             target:
@@ -114,8 +93,8 @@ actions:
       
       # Button 1 Double Press - Set Brightness to 100%
       - conditions:
-          - condition: trigger
-            id: button1-double
+          - condition: template
+            value_template: "{{ triggered_entity == button1_entity and event_type == 'multi_press_2' }}"
         sequence:
           - action: light.turn_on
             target:
@@ -125,27 +104,26 @@ actions:
       
       # Button 1 Hold - Continuously Increase Brightness
       - conditions:
-          - condition: trigger
-            id: button1-hold
+          - condition: template
+            value_template: "{{ triggered_entity == button1_entity and event_type == 'long_press' }}"
         sequence:
           - repeat:
               while:
-                - condition: trigger
-                  id: button1-hold
+                - condition: template
+                  value_template: "{{ true }}"
               sequence:
-                - parallel:
-                    - action: light.turn_on
-                      target:
-                        entity_id: !input target_light
-                      data:
-                        brightness_step_pct: "{{ helper_hold_dim_step }}"
-                        transition: "{{ helper_hold_delay }}"
-                    - delay: "{{ helper_hold_delay }}"
+                - action: light.turn_on
+                  target:
+                    entity_id: !input target_light
+                  data:
+                    brightness_step_pct: "{{ helper_hold_dim_step }}"
+                - delay:
+                    milliseconds: 100
       
       # Button 2 Double Press - Set Brightness to 10%
       - conditions:
-          - condition: trigger
-            id: button2-double
+          - condition: template
+            value_template: "{{ triggered_entity == button2_entity and event_type == 'multi_press_2' }}"
         sequence:
           - action: light.turn_on
             target:
@@ -155,26 +133,23 @@ actions:
       
       # Button 2 Hold - Continuously Decrease Brightness
       - conditions:
-          - condition: trigger
-            id: button2-hold
+          - condition: template
+            value_template: "{{ triggered_entity == button2_entity and event_type == 'long_press' }}"
         sequence:
-          - variables:
-              brightness_pct: "{{ iif(is_state(target_light, 'on'), state_attr(target_light, 'brightness'), 0) * 100 / 255 }}"
-              total_iterations_to_zero: "{{ (brightness_pct / helper_hold_dim_step) | round(0, 'ceil') }}"
           - repeat:
-              count: "{{ total_iterations_to_zero - 1 }}"
+              while:
+                - condition: template
+                  value_template: "{{ state_attr(target_light, 'brightness') | int(0) > 3 }}"
               sequence:
-                - parallel:
-                    - action: light.turn_on
-                      target:
-                        entity_id: !input target_light
-                      data:
-                        brightness_step_pct: "{{ helper_hold_dim_step | int * -1 }}"
-                        transition: "{{ helper_hold_delay }}"
-                    - delay: "{{ helper_hold_delay }}"
+                - action: light.turn_on
+                  target:
+                    entity_id: !input target_light
+                  data:
+                    brightness_step_pct: "{{ helper_hold_dim_step | int * -1 }}"
+                - delay:
+                    milliseconds: 100
           - action: light.turn_on
             target:
               entity_id: !input target_light
             data:
               brightness_pct: 1
-              transition: "{{ helper_hold_delay }}"
