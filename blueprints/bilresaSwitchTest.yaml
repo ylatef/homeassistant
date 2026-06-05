@@ -32,9 +32,7 @@ blueprint:
       default: []
       selector:
         device:
-          filter:
-            - integration: matter
-          multiple: true
+          multiple: false
     light:
       name: Light
       description: Light to control
