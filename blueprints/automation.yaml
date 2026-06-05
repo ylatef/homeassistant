@@ -1,0 +1,41 @@
+alias: YazLightButtons
+description: ""
+use_blueprint:
+  path: Skaronator/ikea-bilresa-dual-button.yaml
+  input:
+    button1_event:
+      - event.bilresa_dual_button_button_1
+    button2_event:
+      - event.bilresa_dual_button_button_2
+    button1_single:
+      - action: light.toggle
+        metadata: {}
+        target:
+          device_id: 1bec42344ac1ebfb6135a4115c0b4c0f
+        data: {}
+    button1_double:
+      - device_id: 1bec42344ac1ebfb6135a4115c0b4c0f
+        domain: light
+        entity_id: 204156139a28f83079f043d16df23549
+        type: brightness_increase
+    button1_while_holding:
+      - device_id: 1bec42344ac1ebfb6135a4115c0b4c0f
+        domain: light
+        entity_id: 204156139a28f83079f043d16df23549
+        type: brightness_increase
+    button2_single:
+      - action: light.toggle
+        metadata: {}
+        target:
+          entity_id: light.kajplats_e27_cws_globe_1055lm
+        data: {}
+    button2_double:
+      - device_id: 1bec42344ac1ebfb6135a4115c0b4c0f
+        domain: light
+        entity_id: 204156139a28f83079f043d16df23549
+        type: brightness_decrease
+    button2_while_holding:
+      - type: turn_off
+        device_id: 1bec42344ac1ebfb6135a4115c0b4c0f
+        entity_id: 204156139a28f83079f043d16df23549
+        domain: light

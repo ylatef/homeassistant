@@ -1,0 +1,180 @@
+﻿blueprint:
+  homeassistant:
+    min_version: 2024.10.0
+  author: ylatef
+  domain: automation
+  name: IKEA Matter Switch - Light Control
+  description: >
+    ## 💡 Control a light with IKEA Matter Switch
+        
+    Control a single light using an IKEA Matter switch with dual buttons.
+
+    Available controls:
+      - Press **button 1** to toggle the light
+      - Press **button 2** to toggle the light
+      - Double-press **button 1** to set brightness to 100%
+      - Hold **button 1** to increase brightness
+      - Double-press **button 2** to set brightness to 10%
+      - Hold **button 2** to decrease brightness
+  input:
+    matter_switch:
+      name: IKEA Bilresa Dual Button Switch
+      description: IKEA Bilresa Dual Button switch device to use
+      selector:
+        device:
+          filter:
+            - integration: matter
+              manufacturer: IKEA of Sweden
+              model: BILRESA dual button
+          multiple: false
+    target_light:
+      name: Light
+      description: Light to control
+      selector:
+        entity:
+          filter:
+            domain: light
+          multiple: false
+
+mode: restart
+max_exceeded: silent
+
+trigger_variables:
+  matter_switch: !input matter_switch
+
+triggers:
+  # Button 1 - Single Press
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: event.bilresa_dual_button_button_1
+    id: button1-single
+  
+  # Button 1 - Double Press
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: event.bilresa_dual_button_button_1
+      attribute_name: event_type
+      new_value: multi_press_2
+    id: button1-double
+  
+  # Button 1 - Long Press (Hold)
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: event.bilresa_dual_button_button_1
+      attribute_name: event_type
+      new_value: long_press
+    id: button1-hold
+  
+  # Button 2 - Single Press
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: event.bilresa_dual_button_button_2
+    id: button2-single
+  
+  # Button 2 - Double Press
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: event.bilresa_dual_button_button_2
+      attribute_name: event_type
+      new_value: multi_press_2
+    id: button2-double
+  
+  # Button 2 - Long Press (Hold)
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: event.bilresa_dual_button_button_2
+      attribute_name: event_type
+      new_value: long_press
+    id: button2-hold
+
+variables:
+  target_light: !input target_light
+  helper_hold_delay: 0.1
+  helper_hold_dim_step: 4
+
+actions:
+  - choose:
+      # Button 1 & 2 Single Press - Toggle Light
+      - conditions:
+          - condition: trigger
+            id:
+              - button1-single
+              - button2-single
+        sequence:
+          - action: light.toggle
+            target:
+              entity_id: !input target_light
+            data: {}
+      
+      # Button 1 Double Press - Set Brightness to 100%
+      - conditions:
+          - condition: trigger
+            id: button1-double
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: !input target_light
+            data:
+              brightness_pct: 100
+      
+      # Button 1 Hold - Continuously Increase Brightness
+      - conditions:
+          - condition: trigger
+            id: button1-hold
+        sequence:
+          - repeat:
+              while:
+                - condition: trigger
+                  id: button1-hold
+              sequence:
+                - parallel:
+                    - action: light.turn_on
+                      target:
+                        entity_id: !input target_light
+                      data:
+                        brightness_step_pct: "{{ helper_hold_dim_step }}"
+                        transition: "{{ helper_hold_delay }}"
+                    - delay: "{{ helper_hold_delay }}"
+      
+      # Button 2 Double Press - Set Brightness to 10%
+      - conditions:
+          - condition: trigger
+            id: button2-double
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: !input target_light
+            data:
+              brightness_pct: 10
+      
+      # Button 2 Hold - Continuously Decrease Brightness
+      - conditions:
+          - condition: trigger
+            id: button2-hold
+        sequence:
+          - variables:
+              brightness_pct: "{{ iif(is_state(target_light, 'on'), state_attr(target_light, 'brightness'), 0) * 100 / 255 }}"
+              total_iterations_to_zero: "{{ (brightness_pct / helper_hold_dim_step) | round(0, 'ceil') }}"
+          - repeat:
+              count: "{{ total_iterations_to_zero - 1 }}"
+              sequence:
+                - parallel:
+                    - action: light.turn_on
+                      target:
+                        entity_id: !input target_light
+                      data:
+                        brightness_step_pct: "{{ helper_hold_dim_step | int * -1 }}"
+                        transition: "{{ helper_hold_delay }}"
+                    - delay: "{{ helper_hold_delay }}"
+          - action: light.turn_on
+            target:
+              entity_id: !input target_light
+            data:
+              brightness_pct: 1
+              transition: "{{ helper_hold_delay }}"
