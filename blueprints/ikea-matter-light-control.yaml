@@ -61,7 +61,7 @@ variables:
   button1_event: !input button1_event
   button2_event: !input button2_event
   helper_hold_delay: 0.1
-  helper_hold_dim_step: 4
+  helper_hold_dim_step: 10
   event_type: "{{ trigger.to_state.attributes.event_type if trigger.to_state and trigger.to_state.attributes else '' }}"
   triggered_entity: "{{ trigger.entity_id }}"
 
