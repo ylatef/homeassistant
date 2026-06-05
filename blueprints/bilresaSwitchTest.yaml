@@ -34,8 +34,6 @@ blueprint:
         device:
           filter:
             - integration: matter
-              manufacturer: IKEA of Sweden
-              model: BILRESA dual button (32769)
           multiple: true
     light:
       name: Light
